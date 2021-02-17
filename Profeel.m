@@ -2300,6 +2300,7 @@ guidata(hObject, handles);
 skipped = 0;
 filesindir = 0;
 
+
 % Check datatype by reading 1st lines
 for i = 1:length(handles.mydir)
    fid = fopen([handles.mydir(1).folder, '\', handles.mydir(i).name]);
@@ -2321,8 +2322,10 @@ for i = 1:length(handles.mydir)
         elseif contains(handles.mydir(i).name, 'dcm')
             % 3d dose file
             datatype = 'dcm';
-            handles.mydir(i).name
             filesindir = filesindir + 1;
+        elseif contains(handles.mydir(i).name, 'mat')
+            datatype = 'mat';
+            %filesindir = filesindir + 1;
         end
    else
        skipped = skipped + 1;
@@ -2343,6 +2346,52 @@ if strcmp(datatype, 'PTW')
     end
     
 
+elseif strcmp(datatype, 'mat')
+    for j = 1:length(handles.mydir)
+        % Go through the directory and load all matlab structures
+        if handles.mydir(j).bytes > 1 
+            profeeldata = load([handles.mydir(j).folder, '\', handles.mydir(j).name]);
+            % After loading check load all the data structures under the
+            % main structure named tempdata
+            fields = fieldnames(profeeldata.tempdata);
+            try
+                datab4 = length(fieldnames(handles.alldata));
+            catch
+                datab4 = 0; 
+            end
+            namenum = datab4;
+            for i = 1:length(fields)
+                % Check for dublicates
+                while sum(contains(handles.listboxChooseData.String, ['struct', num2str(i+namenum),'_'])) ~= 0
+                    namenum = namenum+1;    
+                end
+                % Save data structures to the program's main structute
+                handles.alldata.(['Data', num2str(datab4 + i)]) = profeeldata.tempdata.(['Data', num2str(i)]);
+                %Update directory
+                handles.alldata.(['Data', num2str(datab4 + i)]).directory = handles.mydir(1).folder;
+                % 
+                templist = ['struct', num2str(i+namenum), '_', profeeldata.tempdata.(['Data', num2str(i)]).name];
+                
+                temporig = templist;
+                strcat(templist)
+                strcat(temporig)
+                handles.listboxArray{end+1} = strcat(templist);
+                handles.origlist{end+1} = strcat(temporig);
+                
+                 % Add files to listbox array
+                handles.datacount = handles.datacount + 1;
+                
+            end
+            % Add files to listbox array
+            handles.idx = zeros(1,length(fieldnames(handles.alldata)));
+            set(handles.listboxChooseData, 'String', handles.listboxArray);
+            handles.order = zeros(1,length(handles.idx));
+        end
+    end
+    
+    
+    
+    
  
 elseif strcmp(datatype, 'mcc')
     handles.normalizationdist = str2double(get(handles.edit2, 'String'));
@@ -2364,8 +2413,13 @@ elseif strcmp(datatype, 'mcc')
     catch
         datab4 = 0; 
     end
+    namenum = datab4;
     for i = 1:length(nams)
-        templist = ['mcc', num2str(i),'_',mccdata.(['mcc', num2str(i)]).name];
+        % Check for dublicates
+        while sum(contains(handles.listboxChooseData.String, ['mcc', num2str(i+namenum),'_'])) ~= 0
+            namenum = namenum+1;    
+        end
+        templist = ['mcc', num2str(namenum + i),'_',mccdata.(['mcc', num2str(i)]).name];
         temporig = templist;
         handles.alldata.(['Data', num2str(datab4 + i)]) = mccdata.(['mcc', num2str(i)]);
         handles.alldata.(['Data', num2str(datab4 + i)]).directory = handles.mydir(1).folder;
@@ -4657,10 +4711,10 @@ function savematfile_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 tempdata = handles.alldata;
-save('alldata.mat', 'tempdata');
+newfilename = get(handles.editexport, 'String');
+save([newfilename, '.mat'], 'tempdata');
 
 guidata(hObject, handles);
-
 
 
 
