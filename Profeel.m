@@ -492,7 +492,14 @@ if handles.redraw == 0
     handles.chosen = contents{get(hObject,'Value')};
     tempch = strsplit(handles.chosen, '_');
     handles.chosen = tempch{1};
-    idx1 = double(contains(handles.listboxArray, [handles.chosen, '_']));
+    % Find the first filetype from the listbox tag/name (.mat struct imports may contain multiple filetypes)
+    listboxarrayfiletypes = {length(handles.listboxArray)};
+    for cc = 1:length(handles.listboxArray)
+        temp = strsplit(handles.listboxArray{cc}, '_');
+        listboxarrayfiletypes{cc} = [temp{1},'_'];
+    end
+
+    idx1 = double(contains(listboxarrayfiletypes, [handles.chosen, '_']));
     tempidx = handles.idx + idx1;
     temparr = find(tempidx > 1);
     handles.legendlist = {};
@@ -2209,6 +2216,10 @@ function editexport_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 temp = get(hObject, 'String');
+if ~isfield(handles, 'myfile')
+    handles.myfile = get(handles.editexport, 'String');
+end
+
 if strcmp(temp, handles.myfile)
    % Do nothing, filename has not changed
 else
@@ -2373,8 +2384,8 @@ elseif strcmp(datatype, 'mat')
                 templist = ['struct', num2str(i+namenum), '_', profeeldata.tempdata.(['Data', num2str(i)]).name];
                 
                 temporig = templist;
-                strcat(templist)
-                strcat(temporig)
+                strcat(templist);
+                strcat(temporig);
                 handles.listboxArray{end+1} = strcat(templist);
                 handles.origlist{end+1} = strcat(temporig);
                 
@@ -2887,6 +2898,11 @@ for i = 1:length(indices)
     % Add the old directory
     datadir = handles.alldata.(['Data', num2str(indices(i))]).directory;
     % Get the line
+    % check first that normalization distance exists for .mat imports
+    if ~isfield(handles, 'normalizationdist')
+        handles.normalizationdist = str2double(get(handles.edit2, 'String'));
+        handles.normalizationperc = str2double(get(handles.edit6, 'String'));
+    end
     tempo = collect3ddata(templist, parentname,enrg, FS, madata, datatype, datadir, handles.newlinecount, handles.normalizationdist, handles.normalizationperc, handles.normalizationtoval);
     try
         tempo.(['NEW', num2str(handles.newlinecount)]).DataUnit = handles.alldata.(['Data',num2str(indices(i))]).DataUnit;
