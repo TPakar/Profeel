@@ -17,7 +17,6 @@ function [caxdev, sym1, hom, dmax1, dmin1, dev, fieldsize, penR, penL] = fieldpa
 % with this program. If not, see http://www.gnu.org/licenses/
 %%
 %% Computes the field parameters sym, hom, dmax, dmin, pen, grad, dev
-% Input data must be CAX normalized
 
 % if ~isempty(varargin)
 % 
@@ -28,7 +27,6 @@ function [caxdev, sym1, hom, dmax1, dmin1, dev, fieldsize, penR, penL] = fieldpa
 
 % Find closest values to 50% CAX until closest values are found
 % symmetrically (Finds closest values to 50% from each side)
-
 
 % Find the last position with 0.5 value
 

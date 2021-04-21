@@ -28,7 +28,6 @@ newdata.(['NEW',num2str(filecount)]).directory = datadirect;
 
 idx2 = [];
 % Interpolate data to find normalization constants. Interpolation
-% density of 0.01 evalueted as sufficient
 datainterp = [];
 midax = ceil(length(tempmat(:,1))/2);
 try

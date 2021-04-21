@@ -2567,26 +2567,117 @@ elseif strcmp(datatype, '3ddose') || strcmp(datatype, 'dcm')
             zstep = 1;
         end
         
-        % Add basic parameters
-        handles.alldata.(['Data',num2str(handles.datacount)]).xpos = x;
-        handles.alldata.(['Data',num2str(handles.datacount)]).ypos = y;
-        handles.alldata.(['Data',num2str(handles.datacount)]).zpos = z;
-        handles.alldata.(['Data',num2str(handles.datacount)]).data = dose_3d;
-        try
-            handles.alldata.(['Data',num2str(handles.datacount)]).error = derror_3d;
-        catch 
-        end
+        % Add filename to the structure
         handles.alldata.(['Data',num2str(handles.datacount)]).name = filename;
-        handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'XYZ';
-        handles.alldata.(['Data',num2str(handles.datacount)]).datatype = '3D';
+        
+        % Check dimensions
+        if length(x) > 1 && length(y) > 1 && length(z) > 1
+            disp('3D')
+            % Add 3D data
+            handles.alldata.(['Data',num2str(handles.datacount)]).data = dose_3d;
+            try
+                handles.alldata.(['Data',num2str(handles.datacount)]).error = derror_3d;
+            catch 
+                disp('Error while saving statistical uncertainty data');
+            end
+            handles.alldata.(['Data',num2str(handles.datacount)]).xpos = x;
+            handles.alldata.(['Data',num2str(handles.datacount)]).ypos = y;
+            handles.alldata.(['Data',num2str(handles.datacount)]).zpos = z;
+            handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'XYZ';
+            handles.alldata.(['Data',num2str(handles.datacount)]).datatype = '3D';
+        elseif length(x) > 1 && length(y) > 1 || length(x) > 1 && length(z) > 1 || length(z) > 1 && length(y) > 1
+                handles.alldata.(['Data',num2str(handles.datacount)]).datatype = '2D';
+                disp('2D')
+            if length(x) > 1 && length(y) > 1
+                    handles.alldata.(['Data',num2str(handles.datacount)]).data = dose_3d;
+                try
+                    handles.alldata.(['Data',num2str(handles.datacount)]).error = derror_3d;
+                catch 
+                    disp('Error while saving statistical uncertainty data');
+                end
+
+                handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'XY';
+                hordim = x;
+                vertdim = y;
+                % Add 2D data
+                handles.alldata.(['Data',num2str(handles.datacount)]).data = squeeze(dose_3d(:,:,1));
+                try
+                    handles.alldata.(['Data',num2str(handles.datacount)]).error = squeeze(derror_3d(:,:,1));
+                catch 
+                    disp('Error while saving statistical uncertainty data');
+                end
+            elseif length(x) > 1 && length(z) > 1
+                handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'XZ';
+                % Add 2D data
+                handles.alldata.(['Data',num2str(handles.datacount)]).data = squeeze(dose_3d(1,:,:));
+                try
+                    handles.alldata.(['Data',num2str(handles.datacount)]).error = squeeze(derror_3d(1,:,:));
+                catch 
+                    disp('Error while saving statistical uncertainty data');
+                end
+                hordim = x;
+                vertdim = z;
+            else
+                handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'YZ';
+                % Add 2D data
+                handles.alldata.(['Data',num2str(handles.datacount)]).data = squeeze(dose_3d(:,1,:));
+                try
+                    handles.alldata.(['Data',num2str(handles.datacount)]).error = squeeze(derror_3d(:,1,:));
+                catch 
+                    disp('Error while saving statistical uncertainty data');
+                end
+                hordim = y;
+                vertdim = z;
+            end
+            tempo = modifynewplane(handles.alldata.(['Data',num2str(handles.datacount)]).data, hordim, vertdim, filename, filename, handles.mydir(1).folder, 'Unknown', 'Unknown', handles.datacount,...
+                handles.alldata.(['Data',num2str(handles.datacount)]).Plane, handles.normalizationtoval);
+            handles.alldata.(['Data',num2str(handles.datacount)]) = tempo.(['NEW', num2str(handles.datacount)]);
+            
+        else
+            handles.alldata.(['Data',num2str(handles.datacount)]).datatype = 'profile';
+            disp('1D')
+            if length(x) > 1
+                % Add 1D data
+                handles.alldata.(['Data',num2str(handles.datacount)]).data = squeeze(dose_3d(1,:,1));
+                try
+                    errord = squeeze(derror_3d(1,:,1));
+                catch 
+                    disp('Error while saving statistical uncertainty data');
+                end
+                handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'X';
+                handles.alldata.(['Data',num2str(handles.datacount)]).pos = x;
+            elseif length(y) > 1
+                handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'Y';
+                % Add 1D data
+                handles.alldata.(['Data',num2str(handles.datacount)]).data = squeeze(dose_3d(:,1,1));
+                try
+                    errord = squeeze(derror_3d(:,1,1));
+                catch 
+                    disp('Error while saving statistical uncertainty data');
+                end
+                handles.alldata.(['Data',num2str(handles.datacount)]).pos = y;
+            elseif length(z) > 1
+                handles.alldata.(['Data',num2str(handles.datacount)]).Plane = 'Z';
+                % Add 1D data
+                handles.alldata.(['Data',num2str(handles.datacount)]).data = squeeze(dose_3d(1,1,:));
+                try
+                    errord = squeeze(derror_3d(1,1,:));
+                catch 
+                    disp('Error while saving statistical uncertainty data');
+                end
+                handles.alldata.(['Data',num2str(handles.datacount)]).pos = z;
+            end
+            
+        end
+        
         handles.alldata.(['Data',num2str(handles.datacount)]).Energy = 'Unknown';
         handles.alldata.(['Data',num2str(handles.datacount)]).FieldSize = 'Unknown';
         handles.alldata.(['Data',num2str(handles.datacount)]).directory = handles.mydir(1).folder;
+        
         % Truncate size for display, if data is too big (e.g. > 100/dim)
-        if truncate == 1
+        if truncate == 1 && (strcmp(handles.alldata.(['Data',num2str(handles.datacount)]).datatype, "2D") || strcmp(handles.alldata.(['Data',num2str(handles.datacount)]).datatype,"3D"))
             disp('Data truncated to speedup display');
-            
-            
+
             Vdose = dose_3d(1:ystep:length(dose_3d(:,1,1)), 1:xstep:length(dose_3d(1,:,1)), 1:zstep:length(dose_3d(1,1,:)));
             try
                 Verror = derror_3d(1:ystep:length(derror_3d(:,1,1)), 1:xstep:length(derror_3d(1,:,1)), 1:zstep:length(derror_3d(1,1,:)));
@@ -2611,9 +2702,49 @@ elseif strcmp(datatype, '3ddose') || strcmp(datatype, 'dcm')
             handles.alldata.(['Data',num2str(handles.datacount)]).Displayypos = y;
             handles.alldata.(['Data',num2str(handles.datacount)]).Displayzpos = z;
         end
-        % Find midaxis for 3D display
-        handles.alldata.(['Data',num2str(handles.datacount)]).Depthraw = round(length(handles.alldata.(['Data',num2str(handles.datacount)]).data(1,1,:))/2);
-        handles.alldata.(['Data',num2str(handles.datacount)]).Depthdisplay = round(length(handles.alldata.(['Data',num2str(handles.datacount)]).Displaydata(1,1,:))/2);
+        try
+             % Find midaxis for 3D display
+            handles.alldata.(['Data',num2str(handles.datacount)]).Depthraw = round(length(handles.alldata.(['Data',num2str(handles.datacount)]).data(1,1,:))/2);
+            handles.alldata.(['Data',num2str(handles.datacount)]).Depthdisplay = round(length(handles.alldata.(['Data',num2str(handles.datacount)]).Displaydata(1,1,:))/2);
+        catch
+           disp('.3ddose data not 3 dimensional. Lower resolution display data may not work. If problems appear, try unchecking the lower resolution checkbox'); 
+        end
+        
+       
+        % Compute normalizations for 1d cases
+        
+        if strcmp(handles.alldata.(['Data',num2str(handles.datacount)]).datatype, 'profile') || strcmp(handles.alldata.(['Data',num2str(handles.datacount)]).datatype, 'pdd')
+               tempmat(:,1) = handles.alldata.(['Data',num2str(handles.datacount)]).pos;
+               tempmat(:,2) = handles.alldata.(['Data',num2str(handles.datacount)]).data;
+               dataholder = collect3ddata(handles.alldata.(['Data',num2str(handles.datacount)]).name, handles.alldata.(['Data',num2str(handles.datacount)]).name, handles.alldata.(['Data',num2str(handles.datacount)]).Energy,...
+                   handles.alldata.(['Data',num2str(handles.datacount)]).FieldSize, tempmat, handles.alldata.(['Data',num2str(handles.datacount)]).datatype...
+                   , handles.mydir(1).folder, handles.datacount, handles.normalizationdist, handles.normalizationperc, handles.normalizationtoval);
+               handles.alldata.(['Data',num2str(handles.datacount)]) = dataholder.(['NEW', num2str(handles.datacount)]);
+               handles.alldata.(['Data',num2str(handles.datacount)]).error = errord';
+               
+
+            try
+                [caxdev, sym, hom, dmax, dmin, dev, FW, penR, penL] = fieldparams(handles.alldata.(['Data', num2str(handles.datacount)]).interpolated(:,2),...
+                    handles.alldata.(['Data', num2str(handles.datacount)]).interpolated(:,1), '3ddata', handles.caxcorrection);
+                handles.alldata.(['Data', num2str(handles.datacount)]).params = [caxdev, sym, hom, dmax, dmin, dev, FW, penR, penL];
+                handles.alldata.(['Data', num2str(handles.datacount)]).datatype = 'profile';
+                if (abs(sym) > handles.symmetryThresHold && abs(penR-penL) > min([penR,penL])) || sum(isnan(handles.alldata.(['Data', num2str(handles.datacount)]).params)) > 0
+                   [R100, R80, R50, D100, D200, Ds, J1020] = pddparams(handles.alldata.(['Data', num2str(handles.datacount)]).interpolated(:,2),...
+                        handles.alldata.(['Data', num2str(handles.datacount)]).interpolated(:,1));
+                    handles.alldata.(['Data', num2str(handles.datacount)]).params = [R100, R80, R50, D100, D200, Ds, J1020]; 
+                    handles.alldata.(['Data', num2str(handles.datacount)]).datatype = 'pdd';
+                    disp('Symmetry too low -> Try PDD');
+                end
+            catch
+                disp('Trying PDD data');
+                [R100, R80, R50, D100, D200, Ds, J1020] = pddparams(handles.alldata.(['Data', num2str(handles.datacount)]).interpolatedCAX(:,2),...
+                        handles.alldata.(['Data',num2str(handles.datacount)]).interpolatedCAX(:,1));
+                    handles.alldata.(['Data', num2str(handles.datacount)]).params = [R100, R80, R50, D100, D200, Ds, J1020];
+                    handles.alldata.(['Data', num2str(handles.datacount)]).datatype = 'pdd';
+            end
+        
+        end
+        
         
         handles.datacount = handles.datacount + 1;
     end
@@ -2666,6 +2797,9 @@ elseif strcmp(datatype, '3ddose') || strcmp(datatype, 'dcm')
 %                 handles.alldata.(['Data', num2str(i)]).params = [caxdev, sym, hom, dmax, dmin, dev, FW, penR, penL];
 %             end
         end
+        
+        
+        
         
         handles.origlist = handles.listboxArray;
         handles.idx = zeros(1,filesindir);

@@ -106,7 +106,11 @@ end
 % Store dose dimensions
 dose.width = info.PixelSpacing / 10;
 
-% Compute grid offset differences
+% Use dummy offset vector for 2D data
+if ~isfield(info, 'GridFrameOffsetVector')
+    info.GridFrameOffsetVector = [0,0,0];
+end
+    
 widths = diff(info.GridFrameOffsetVector);
 
 % Verify that slice locations do not differ significantly (1%)
@@ -127,6 +131,7 @@ if exist('Event', 'file') == 2
     Event(sprintf('IEC-Y resolution computed as %g (range %g to %g)', ...
         dose.width(3), min(abs(widths))/10, max(abs(widths))/10));
 end
+
 
 % If image orientation is missing, assume it to be HFS
 if ~isfield(info, 'ImageOrientationPatient')
@@ -185,21 +190,34 @@ end
 
 % create dimension vectors
 
-
-
-%Y
-bound_y = dose.start(1):dose.width(1):dose.start(1) + (dose.dimensions(1)-1)*dose.width(1);
-
+try
+    %Y
+    bound_y = dose.start(1):dose.width(1):dose.start(1) + (dose.dimensions(1)-1)*dose.width(1);
+catch
+    bound_y = 0;
+    disp('No Y data'); 
+end
+try
 %X
 bound_x = dose.start(2):dose.width(2):dose.start(2) + (dose.dimensions(2)-1)*dose.width(2);
-
+catch
+    bound_y = 0;
+    disp('No X data'); 
+end
 %Z
-
-bound_z = dose.start(3):dose.width(3):dose.start(3) + (dose.dimensions(3)-1)*dose.width(3);
-bound_z = bound_z*-1;
+try
+    bound_z = dose.start(3):dose.width(3):dose.start(3) + (dose.dimensions(3)-1)*dose.width(3);
+    bound_z = bound_z*-1;
+catch
+    bound_z = 0;
+    disp('No Z data'); 
+end
 % Change image orientation
-data = rot90(dose.data,3);
-
+try
+    data = rot90(dose.data,3);
+catch
+   disp('Could not rotate data. Data not 3d?'); 
+end
 % Flip X and Y data
 temp = bound_y;
 % Change Y-data sign (Coordinate change to 3ddose equivalent)
