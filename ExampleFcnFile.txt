@@ -1,0 +1,23 @@
+DxyzABS = Fdose.*((DforwardCH + DbackCH10x10)/(DforwardCH + DbackCH))*(DcalXYZabs / DcalXYZ)*U*N;
+DforwardCH,DbackCH10x10,DbackCH,DcalXYZabs,DcalXYZ
+DbackCH,U,N
+
+id:Example 1 TB 6X
+DforwardCH = 4.12E-13                                                               
+DbackCH10x10 = 0.43E-6                                                             
+DcalXYZabs = 4.0213                                                              
+DcalXYZ = 9.543777                                                               
+
+id:Example 2 TB 6XFFF
+DforwardCH = 7.34E-13                                                              
+DbackCH10x10 = 1.1E-6                                                             
+DcalXYZabs = 5.123                                                              
+DcalXYZ = 8.54                                                                                                                           
+
+id:Example 3 TB 6X
+DforwardCH = 1E-13                                                               
+DbackCH10x10 = 3E-6                                                             
+DcalXYZabs = 5.111                                                              
+DcalXYZ = 9.45                                                                                                                        
+
+end
