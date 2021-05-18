@@ -41,6 +41,11 @@ for k = 1:length(omnidir)
        ycount = 1;
        fid = fopen([omnidir(1).folder, '\', omnidir(k).name]);
        im = '';
+       % Initialize energy and fieldsize, since they are required later
+       omnidata.(['omni', num2str(filecount)]).Energy = 'Unknown';
+       omnidata.(['omni', num2str(filecount)]).FieldSize = 'Unknown';
+       lengthunit = 'cm';
+       
        while ~contains(line, '</asciibody>')
            if contains(line, 'Image')
               imtemp = strsplit(line);
@@ -78,8 +83,10 @@ for k = 1:length(omnidir)
            % Axis unit
            if contains(line, 'cm')
                divv = 1;
+               lengthunit = '[cm]';
            elseif contains(line, 'mm')
                divv = 10;
+               lengthunit = '[mm]';
            end
 
            % Collect the header
@@ -96,7 +103,7 @@ for k = 1:length(omnidir)
                    %omnidata.(['omni', num2str(filecount+2)]).name = [strrep(splittedline{end}, ' ', ''), ' Y axis ', im];
                end
 
-           elseif linecount > 8 && linecount < 20
+           elseif contains(line, ':')
                 %splittedline = {};
                 splittedline = strsplit(line, ':');
                 temp = strrep(splittedline{1}, ' ', '');
@@ -108,7 +115,7 @@ for k = 1:length(omnidir)
            
            
            
-           if contains(line, "X[cm]")
+           if contains(line, ['X', lengthunit])
                % Collect x positions
                collectdata = linecount + 2;
                datamatrix = zeros(matrows,matcolumns);
@@ -187,7 +194,6 @@ for k = 1:length(omnidir)
         
         datainterpY(:,2) = interp1(ypos, yave, ypos(1):interpdens:ypos(end));
         datainterpY(:,1) = ypos(1):interpdens:ypos(end);
-        %omnidata.(['omni',num2str(filecount+2)]).interpolated  = datainterpY;  % In cm
         
        % Different normalizations
        
@@ -212,9 +218,6 @@ for k = 1:length(omnidir)
        try
            [devx, idxx] = min(abs(xpos));
            [devy, idxy] = min(abs(ypos));
-           %disp('CAX normalization value from absolute minimum (near 0)');
-           %disp(['Deviation due to resolution from 0 in X dir: ', num2str(devx), ' cm']);
-           %disp(['Deviation due to resolution from 0 in Y dir: ', num2str(devy), ' cm']);
            normvalCAXm = datamatrix(idxy, idxx);
        catch
            [sizey, sizex] = size(datamatrix);
@@ -225,16 +228,13 @@ for k = 1:length(omnidir)
 
        %normval = (xave(16) + xave(17))/2;
        
-       
-       %CAXnormalizedXdata = (xave/normvalCAXx);
-       %CAXnormalizedYdata = (yave/normvalCAXy);
+    
        CAXnormalizedMdata = datamatrix/normvalCAXm;
 
        % Normalized to MAX
        normval = max(xave);
-       %MAXnormalizedXdata = (xave/normval);
        normval = max(yave);
-      % MAXnormalizedYdata = (yave/normval);
+
        normvalMAX = max(max(datamatrix));
        MAXnormalizedMdata = datamatrix/normvalMAX;
                
@@ -253,57 +253,17 @@ for k = 1:length(omnidir)
        % Manual normalization (finds the closest distance value <- interpolated before
        % For Y
        [~, idxdisty] = min(abs(datainterpY(:,1) - normalvaldist));
-       % tempmat(idxdist,2)
        MANnormalizedYdata = normalvalperc*yave(:)/datainterpY(idxdisty,2);
        
        
        % Manual normalization
-       %MANnormalizedXdata = xave./normalizationvalue;
-       %MANnormalizedYdata = yave./normalizationvalue;
        try
             MANnormalizedMdata = normalvalperc*datamatrix/((datainterpX(idxdistx,2) + datainterpY(idxdisty,2))/2);
        catch
             disp('Error in initial 2D manual normalization. Renormalize manually');
             MANnormalizedMdata = normalvalperc*datamatrix;
        end
-       % Flip X/Y if needed (if filename has the positioning angle)
-%        if flipx == true
-%            %CAXnormalizedXdata = flip(CAXnormalizedXdata);
-%            %MAXnormalizedXdata = flip(MAXnormalizedXdata);
-%            %UNnormalizedXdata = flip(UNnormalizedXdata);
-%            %MANnormalizedXdata = flip(MANnormalizedXdata);
-%            %datainterpX(:,1) = flip(datainterpX(:,1));
-%            %datainterpX(:,2) = flip(datainterpX(:,2));
-%            
-%            omnidata.(['omni', num2str(filecount+1)]).dataCAX = (CAXnormalizedXdata)';
-%            omnidata.(['omni', num2str(filecount+1)]).dataMAX = (MAXnormalizedXdata)';
-%            omnidata.(['omni', num2str(filecount+1)]).dataNON = (UNnormalizedXdata)';
-%            omnidata.(['omni', num2str(filecount+1)]).dataMAN = (MANnormalizedXdata)';
-%            %xpos = flip(xpos);
-%        else
-%            omnidata.(['omni', num2str(filecount+1)]).dataCAX = CAXnormalizedXdata';
-%            omnidata.(['omni', num2str(filecount+1)]).dataMAX = MAXnormalizedXdata';
-%            omnidata.(['omni', num2str(filecount+1)]).dataNON = UNnormalizedXdata';
-%            omnidata.(['omni', num2str(filecount+1)]).dataMAN = MANnormalizedXdata';
-%        end
-%        if flipy == true
-%            %CAXnormalizedYdata = flip(CAXnormalizedYdata);
-%            %MAXnormalizedYdata = flip(MAXnormalizedYdata);
-%            %UNnormalizedYdata = flip(UNnormalizedYdata);
-%            %MANnormalizedYdata = flip(MANnormalizedYdata);
-%            %datainterpY(:,1) = flip(datainterpY(:,1));
-%            %datainterpY(:,2) = flip(datainterpY(:,2));
-%            omnidata.(['omni', num2str(filecount+2)]).dataCAX = (CAXnormalizedYdata);
-%            omnidata.(['omni', num2str(filecount+2)]).dataMAX = (MAXnormalizedYdata);
-%            omnidata.(['omni', num2str(filecount+2)]).dataNON = (UNnormalizedYdata);
-%            omnidata.(['omni', num2str(filecount+2)]).dataMAN = (MANnormalizedYdata);
-%            %ypos = flip(ypos);
-%        else
-%            omnidata.(['omni', num2str(filecount+2)]).dataCAX = CAXnormalizedYdata;
-%            omnidata.(['omni', num2str(filecount+2)]).dataMAX = MAXnormalizedYdata;
-%            omnidata.(['omni', num2str(filecount+2)]).dataNON = UNnormalizedYdata;
-%            omnidata.(['omni', num2str(filecount+2)]).dataMAN = MANnormalizedYdata;
-%        end
+
        
 
        omnidata.(['omni', num2str(filecount)]).dataCAX = flip(CAXnormalizedMdata);
@@ -404,6 +364,7 @@ for k = 1:length(omnidir)
        filecount = filecount + 1; %+ 3;
    end 
 end
+
 
 %save('Omnidata.mat','omnidata')
 

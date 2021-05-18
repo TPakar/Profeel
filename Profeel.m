@@ -40,7 +40,7 @@ function varargout = Profeel(varargin)
 
 % Edit the above text to modify the response to help Profeel
 
-% Last Modified by GUIDE v2.5 11-Jun-2020 19:41:41
+% Last Modified by GUIDE v2.5 18-May-2021 18:50:15
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -135,6 +135,8 @@ handles.profileColNames = {'CAX dev [cm]', 'Sym [%]', 'Homog. [%]', 'Dmax [%]', 
 handles.symmetryThresHold = 300;
 handles.penumbraThresHoldRatio = 2;
 handles.PTWcount = 0;
+handles.defaultview = {[-inf inf],[-inf inf]};
+handles.axlimits = {[-inf inf],[-inf inf]};
 
 if strcmp(get(hObject,'Visible'),'off')
 
@@ -151,6 +153,11 @@ for i = 1:length(txthandle)
     currentFsize = get(txthandle(i), 'FontSize');
     set(txthandle(i), 'FontSize', currentFsize*screenwidthratio);
 end
+
+
+% Initialize zoom
+handles.zoomhandle = zoom;  
+set(handles.zoomhandle, 'ActionPostCallback', @zoomFcn);
 
 % UIWAIT makes Profeel wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -524,6 +531,7 @@ end
 if sum(handles.idx) > 0
     handles.order(find(~handles.order&handles.idx)) = sum(handles.idx);
 else
+    handles.axlimits = handles.defaultview;
     handles.order(1:end) = 0;
     set(handles.pushbuttonAddLine, 'Visible', 'Off');
     set(handles.pushbuttonAddPlane, 'Visible', 'Off');
@@ -791,8 +799,8 @@ for i = 1:length(handles.idx)
             else
                 zlabel('Value [normalized]');
             end
-            axis([-inf inf -inf inf]);
-            
+            %axis([-inf inf -inf inf]);
+            axis([handles.axlimits{1}(1), handles.axlimits{1}(2), handles.axlimits{2}(1), handles.axlimits{2}(2)]);
             
             
         elseif contains(handles.alldata.(['Data', num2str(i)]).datatype, 'Isodose')
@@ -934,8 +942,8 @@ for i = 1:length(handles.idx)
             else
                 zlabel('Value [normalized]');
             end
-            axis([-inf inf -inf inf]);
-            
+            %axis([-inf inf -inf inf]);
+            axis([handles.axlimits{1}(1), handles.axlimits{1}(2), handles.axlimits{2}(1), handles.axlimits{2}(2)]);
             
             
             
@@ -982,10 +990,10 @@ for i = 1:length(handles.idx)
                             errorup = plotthis + (handles.alldata.(['Data', num2str(i)]).error.*plotthis)/2;
                             errorlow = plotthis - (handles.alldata.(['Data', num2str(i)]).error.*plotthis)/2;
                             plot(plotpos, errorup, '--');
-                            handles.legendlist{end+1} = 'Error+ (total error/2)';
+                            handles.legendlist{end+1} = 'Statistical uncertainty+ (total/2)';
 
                             plot(plotpos, errorlow, '--');
-                            handles.legendlist{end+1} = 'Error- (total error/2)';
+                            handles.legendlist{end+1} = 'Statistical uncertainty- (total/2)';
                         else
                             errorup = (handles.alldata.(['Data', num2str(i)]).reference);
                             plot(plotpos, errorup, '--');
@@ -1061,8 +1069,8 @@ for i = 1:length(handles.idx)
             end
             % Set view back to 1d view
             view(0,90);
-            axis([-inf inf 0 inf]);
-            
+            %axis([-inf inf 0 inf]);
+            axis([handles.axlimits{1}(1), handles.axlimits{1}(2), handles.axlimits{2}(1), handles.axlimits{2}(2)]);
             xlabel('Distance [cm]');
             if strcmp(handles.normalizationtype, 'NON')
                 try
@@ -3382,7 +3390,7 @@ guidata(hObject, handles);
 try
     listboxChooseData_Callback(handles.listboxChooseData, [], handles);
 catch
-   disp('Kuvaajaa ei p�ivitetty'); 
+   disp('Error while displaying data. Figure not updated'); 
 end
 % Hint: get(hObject,'Value') returns toggle state of checkboxShowError
 
@@ -4375,7 +4383,7 @@ for i = 1:length(indices)
                 end
                 
                 catch
-                   disp('Error in 2D rotation along Z-axis'); 
+                   disp('Error in 2D rotation along Z-axis. Please change the data plane to XY from edit menu.'); 
                 end
             end
     end
@@ -4769,7 +4777,7 @@ if donothing == 0
 
         view(0,90);
         axis([tempdata.GAMposx(1) tempdata.GAMposx(end) tempdata.GAMposy(1) tempdata.GAMposy(end)]);
-        legend(['DTA (accuracy == resolution) (', num2str(tempdata.dtapassperc), '%)']);
+        legend(['DTA (accuracy = sqrt(2)*display resolution for square grids) (', num2str(tempdata.dtapassperc), '%)']);
         colorbar;
     end
     handles.alldata.(['Data', num2str(indice)]).chosengam = indx;
@@ -4837,11 +4845,11 @@ if donothing == 0
         axes(handles.axes1);
         cla;
         tempdata = handles.alldata.(['Data', num2str(indice)]).(fnames{gammaidx(indx)});
-        surf(tempdata.GAMposx(:,1), tempdata.GAMposy(:,1), tempdata.absoluteDD);
+        surf(tempdata.GAMposx(:,1), tempdata.GAMposy(:,1), tempdata.relativeDD);
 
         view(0,90);
         axis([tempdata.GAMposx(1) tempdata.GAMposx(end) tempdata.GAMposy(1) tempdata.GAMposy(end)]);
-        legend(['absolute Dose difference (', num2str(tempdata.DDpassperc), '%)']);
+        legend(['relative dose difference (', num2str(tempdata.DDpassperc), '%)']);
         colorbar;
         
     end
@@ -4860,10 +4868,11 @@ function savematfile_Callback(hObject, eventdata, handles)
 % hObject    handle to savematfile (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+ff = msgbox('Wait! Window will close automatically after the data is saved');
 tempdata = handles.alldata;
 newfilename = get(handles.editexport, 'String');
 save([newfilename, '.mat'], 'tempdata');
-
+close(ff);
 guidata(hObject, handles);
 
 
@@ -4876,9 +4885,20 @@ function quickprofile_Callback(hObject, eventdata, handles)
 axes(handles.axes1);
 
 % Create line so it will surface the uistack
-handles.myline = line(0:0.1,0:0.1);
-handles.fixedline = line(0:0.1,0:0.1);
-%handles.legendlist{end+1} = 
+randidx = find(handles.idx);
+if strcmp(handles.alldata.(['Data', num2str(randidx(1))]).Plane, 'XY')
+    initline(1) = min(handles.alldata.(['Data', num2str(randidx(1))]).xpos);
+    initline(2) = min(handles.alldata.(['Data', num2str(randidx(1))]).ypos);
+elseif strcmp(handles.alldata.(['Data', num2str(randidx(1))]).Plane, 'YZ')
+    initline(1) = min(handles.alldata.(['Data', num2str(randidx(1))]).ypos);
+    initline(2) = min(handles.alldata.(['Data', num2str(randidx(1))]).zpos);
+else
+    initline(1) = min(handles.alldata.(['Data', num2str(randidx(1))]).xpos);
+    initline(2) = min(handles.alldata.(['Data', num2str(randidx(1))]).zpos);
+end
+handles.myline = line(initline(1):initline(1)+0.1,initline(2):initline(2)+0.1);
+handles.fixedline = line(initline(1):initline(1)+0.1,initline(2):initline(2)+0.1);
+ 
 legend(handles.legendlist, 'Interpreter', 'None', 'Location','northeast');
 
 % Draw line (use the created l)
@@ -4959,7 +4979,7 @@ for i = 1:length(handles.currentidx)
                         handles.minval = min(min(handles.alldata.(['Data', num2str(handles.currentidx(i))]).(gamname).gamma));
                 end
                 if x11 > x22
-                 datamask2 = flip(datamask,2);
+                 datamask2 = flip(datamask2,2);
                  end
                  if y11 > y22
                     datamask2 = flip(datamask2,1);
@@ -4985,9 +5005,9 @@ for i = 1:length(handles.currentidx)
                          diagonal2 = diag(datainterpmask);
                      end     
 
-                 elseif ysiz < 2
+                 elseif ysiz2 < 2
                      diagonal2 = datamask2(1, 1:xsiz2);
-                 elseif xsiz < 2
+                 elseif xsiz2 < 2
                      diagonal2 = datamask2(1:ysiz2, 1);
                  end
 
@@ -5047,7 +5067,7 @@ for i = 1:length(handles.currentidx)
          handles.lineplot2(i) = plot(xposvect2,diagonal2, 'LineWidth', 2, 'Color', 'r');
          yyaxis right
      end
-     
+
      axis([0 inf handles.minval inf]);
      if isfield(handles.alldata.(['Data', num2str(handles.currentidx(i))]), 'chosengam') && handles.alldata.(['Data', num2str(handles.currentidx(i))]).chosengam ~= 0
         ylabel(handles.alldata.(['Data', num2str(handles.currentidx(i))]).currentgaman);
@@ -5061,8 +5081,7 @@ for i = 1:length(handles.currentidx)
 end
 
 % Plot the line
-%posvectstarts = [min([y1,y2]), min([x1,x2])];
-%posvectcomponents = [posvectstarts(1):1/leny:leny];
+
 hold off
 if gammaon == 0
     title('blue = ref');
@@ -5076,101 +5095,13 @@ if handles.reffixed == 1
 else
     addlistener(handles.myline,'MovingROI',@(src,evt) allevents(src,evt,handles));
 end
-% Create an isodose structure
-% Get the dose value
-% answer = inputdlg('Isodosevalue [depends on chosen normalization]');
-% % check if cancel is pressed
-% if ~isempty(answer)
-    
-%     refvalue = str2num(cell2mat(answer));
-%     
-% 
-% 
-%     indices = find(handles.idx);
-% 
-%     % Go through all chosen data
-%     for i = 1:length(indices)
-%         if strcmp(handles.alldata.(['Data', num2str(indices(i))]).datatype, '3D')
-%             [sizey, sizex, sizez] = size(handles.alldata.(['Data', num2str(indices(i))]).data);
-%             % Create an mask image with 1s for indices abose the ref value
-%             [iy, ix, iz] = find(handles.alldata.(['Data', num2str(indices(i))]).data < refvalue);
-%             % Change the indices to subscripts
-%             subidx = sub2ind([sizey, sizex, sizez], iy, ix, iz);
-%             mask = ones(sizey, sizex, sizez);
-%         else
-%             [sizey, sizex] = size(handles.alldata.(['Data', num2str(indices(i))]).(['data', handles.normalizationtype]));
-%             % Create an mask image with 1s for indices abose the ref value
-%             [iy, ix] = find(handles.alldata.(['Data', num2str(indices(i))]).(['data', handles.normalizationtype]) < refvalue);
-%             % Change the indices to subscripts
-%             subidx = sub2ind([sizey, sizex], iy, ix);
-%             mask = ones(sizey, sizex);
-%         end
-%         
-%         
-%         isodosestruct = handles.alldata.(['Data', num2str(indices(i))]).(['data', handles.normalizationtype]);
-%         
-%         % Get the masked data, set other values to NaN
-%         isodosestruct(subidx) = NaN;
-%         % Binary mask image to find the boundaries
-%         
-%         mask(subidx) = 0;
-%         % Find outline and create a line structure (smoothed for visualization) from the isodose
-%         edgedata = smooth(edge(mask));
-%              
-%         % Create the new isodose structure and add it to the listbox
-%         newisostruct = struct;
-%         newisostruct.dataNON = isodosestruct;
-%         newisostruct.edge = edgedata;
-%         newisostruct.name = [num2str(refvalue), '_' , handles.alldata.(['Data', num2str(indices(i))]).name];
-%         newisostruct.datatype = 'Isodose';
-%         newisostruct.Plane = handles.alldata.(['Data', num2str(indices(i))]).Plane;
-%         if contains(newisostruct.Plane, 'X') && contains(newisostruct.Plane, 'Y') && contains(newisostruct.Plane, 'Z') 
-%             newisostruct.xpos = handles.alldata.(['Data', num2str(indices(i))]).xpos; 
-%             newisostruct.ypos = handles.alldata.(['Data', num2str(indices(i))]).ypos;
-%             newisostruct.zpos = handles.alldata.(['Data', num2str(indices(i))]).zpos;
-%         elseif contains(newisostruct.Plane, 'X') && contains(newisostruct.Plane, 'Y')
-%             newisostruct.xpos = handles.alldata.(['Data', num2str(indices(i))]).xpos; 
-%             newisostruct.ypos = handles.alldata.(['Data', num2str(indices(i))]).ypos; 
-%         elseif contains(newisostruct.Plane, 'X') && contains(newisostruct.Plane, 'Z')
-%             newisostruct.xpos = handles.alldata.(['Data', num2str(indices(i))]).xpos; 
-%             newisostruct.zpos = handles.alldata.(['Data', num2str(indices(i))]).zpos; 
-%         else
-%             newisostruct.zpos = handles.alldata.(['Data', num2str(indices(i))]).zpos; 
-%             newisostruct.ypos = handles.alldata.(['Data', num2str(indices(i))]).ypos; 
-%         end
-%             
-%         newisostruct.DataUnit = handles.alldata.(['Data', num2str(indices(i))]).DataUnit; 
-%                 
-%         templist = ['Isodose', num2str(handles.isodosecount), '_', newisostruct.name];
-%         handles.isodosecount = handles.isodosecount + 1;
-%         %templist = strrep(templist, 'Plane', '');
-%         temporig = templist;
-%         % Add name to listbox array
-%         handles.listboxArray{end+1} = strcat(templist);
-%         handles.origlist{end+1} = strcat(temporig);
-%         
-%        handles.idx(end+1) = 0;
-%        handles.alldata.(['Data', num2str(length(handles.idx))]) = newisostruct;
-%        handles.datacount = handles.datacount + 1;
-%        handles.order(end+1) = 0;
-%     end
-%     %alladata = handles.alldata;
-%     %save('alladata.mat', 'alladata');
-%     set(handles.listboxChooseData, 'String', handles.listboxArray);
-%     
-% end
-
 
 % Update the figure with only re-drawing chosen data
 % handles.redraw = 1;
 % 
  guidata(hObject, handles);
 % 
-% try
-%     listboxChooseData_Callback(handles.listboxChooseData, [], handles);
-% catch
-%    disp('Error in axis invertion. Figure not updated'); 
-% end
+
 
 
 function gammarefdoseEdit_Callback(hObject, eventdata, handles)
@@ -5593,6 +5524,188 @@ try
 catch
    disp('Error in axis invertion. Figure not updated'); 
 end
+
+
+
+function zoomFcn(hObject, event)  
+
+handle = guidata(hObject);
+handle.axlimits = get(gca, {'xlim', 'ylim'});
+[handle.axlimits{1}(1), handle.axlimits{1}(2)]
+[handle.axlimits{2}(1), handle.axlimits{2}(2)]
+
+guidata(hObject, handle);
+
+
+
+% --------------------------------------------------------------------
+function editAxisName_Callback(hObject, eventdata, handles)
+% hObject    handle to editAxisName (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+prompt = {'',''};
+dlgtitle = 'Type axis name (X,Y,Z). E.g. X -> Y, changes X axis name to Y';
+definput = {'',''};
+dims = [1 80];
+newline = inputdlg(prompt,dlgtitle,dims,definput);
+% check if cancel is pressed
+if ~isempty(newline)
+    
+    newlinematx = cell2mat(newline(1));
+    newlinematy = cell2mat(newline(2));
+    indices = find(handles.idx);
+    for i = 1:length(indices)
+        % If the data exists -> swap the names
+        if isfield(handles.alldata.(['Data', num2str(indices(i))]), [lower(newlinematy), 'pos'])
+           %disp('Axis names cannot be swapped!');
+           if strcmp(handles.alldata.(['Data', num2str(indices(i))]).datatype, '3D')
+               % Permute 3D data
+               temp = handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematx),'pos']);
+               handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematx),'pos']) = handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematy),'pos']);
+               handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematy),'pos']) = temp;
+               if isfield(handles.alldata.(['Data', num2str(indices(i))]), 'Displaydata')
+                   temp = handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematx),'pos']);
+                   handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematx),'pos']) = handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematy),'pos']);
+                   handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematy),'pos']) = temp;
+               end
+               
+               if strcmp(newlinematx, 'X') && strcmp(newlinematy, 'Y') || strcmp(newlinematx, 'Y') && strcmp(newlinematy, 'X')
+                    try
+                       handles.alldata.(['Data', num2str(indices(i))]).data = permute(handles.alldata.(['Data', num2str(indices(i))]).data, [2, 1, 3]);
+                       if isfield(handles.alldata.(['Data', num2str(indices(i))]), 'Displaydata')
+                           handles.alldata.(['Data', num2str(indices(i))]).Displaydata = permute(handles.alldata.(['Data', num2str(indices(i))]).Displaydata, [2, 1, 3]);
+                       end
+                   catch
+                      disp('Error while permuting the data'); 
+                    end
+               elseif strcmp(newlinematx, 'X') && strcmp(newlinematy, 'Z') || strcmp(newlinematx, 'Z') && strcmp(newlinematy, 'X')
+                   try
+                       handles.alldata.(['Data', num2str(indices(i))]).data = permute(handles.alldata.(['Data', num2str(indices(i))]).data, [1, 3, 2]);
+                       if isfield(handles.alldata.(['Data', num2str(indices(i))]), 'Displaydata')
+                           handles.alldata.(['Data', num2str(indices(i))]).Displaydata = permute(handles.alldata.(['Data', num2str(indices(i))]).Displaydata, [1, 3, 2]);
+                       end
+                   catch
+                      disp('Error while permuting the data'); 
+                    end
+               elseif strcmp(newlinematx, 'Y') && strcmp(newlinematy, 'Z') || strcmp(newlinematx, 'Z') && strcmp(newlinematy, 'Y')
+                   try
+                       handles.alldata.(['Data', num2str(indices(i))]).data = permute(handles.alldata.(['Data', num2str(indices(i))]).data, [3, 2, 1]);
+                       if isfield(handles.alldata.(['Data', num2str(indices(i))]), 'Displaydata')
+                           handles.alldata.(['Data', num2str(indices(i))]).Displaydata = permute(handles.alldata.(['Data', num2str(indices(i))]).Displaydata, [3, 2, 1]);
+                       end
+                   catch
+                      disp('Error while permuting the data'); 
+                   end
+               end
+                   
+           else
+               % Permute 2D data
+                    try
+                       handles.alldata.(['Data', num2str(indices(i))]).dataNON = permute(handles.alldata.(['Data', num2str(indices(i))]).dataNON, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataMAX = permute(handles.alldata.(['Data', num2str(indices(i))]).dataMAX, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataTOVAL = permute(handles.alldata.(['Data', num2str(indices(i))]).dataTOVAL, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataCAX = permute(handles.alldata.(['Data', num2str(indices(i))]).dataCAX, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataMAN = permute(handles.alldata.(['Data', num2str(indices(i))]).dataMAN, [2, 1]);
+                       temp = handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematx),'pos']);
+                       handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematx),'pos']) = handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematy),'pos']);
+                       handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematy),'pos']) = temp;
+
+                       if isfield(handles.alldata.(['Data', num2str(indices(i))]), 'DisplaydataNON')
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataNON = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataNON, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAX = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAX, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataTOVAL = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataTOVAL, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataCAX = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataCAX, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAN = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAN, [2, 1]);
+                           temp = handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematx),'pos']);
+                           handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematx),'pos']) = handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematy),'pos']);
+                           handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematy),'pos']) = temp;
+
+                       end
+                   catch
+                      disp('Error while permuting the data'); 
+                      lasterror
+                   end
+               
+           end
+        else
+           
+            % If the data does not exist -> change the requested name
+            handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematy), 'pos']) = handles.alldata.(['Data', num2str(indices(i))]).([lower(newlinematx), 'pos']);
+            handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematy), 'pos']) = handles.alldata.(['Data', num2str(indices(i))]).(['Display', lower(newlinematx), 'pos']);
+            % Remove the old field
+            handles.alldata.(['Data', num2str(indices(i))]) = rmfield(handles.alldata.(['Data', num2str(indices(i))]), [lower(newlinematx), 'pos']);
+            handles.alldata.(['Data', num2str(indices(i))]) = rmfield(handles.alldata.(['Data', num2str(indices(i))]), ['Display', lower(newlinematx), 'pos']);
+            
+            
+            if ~strcmp(handles.alldata.(['Data', num2str(indices(i))]).datatype, '3D')
+               if strcmp(handles.alldata.(['Data', num2str(indices(i))]).Plane, 'XY') && newlinematx == 'X'
+                   handles.alldata.(['Data', num2str(indices(i))]).Plane = 'YZ';
+               elseif strcmp(handles.alldata.(['Data', num2str(indices(i))]).Plane, 'XY') && newlinematx == 'Y'
+                   handles.alldata.(['Data', num2str(indices(i))]).Plane = 'XZ';
+                   % Need to swap the data order
+                   try
+                       handles.alldata.(['Data', num2str(indices(i))]).dataNON = permute(handles.alldata.(['Data', num2str(indices(i))]).dataNON, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataMAX = permute(handles.alldata.(['Data', num2str(indices(i))]).dataMAX, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataTOVAL = permute(handles.alldata.(['Data', num2str(indices(i))]).dataTOVAL, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataCAX = permute(handles.alldata.(['Data', num2str(indices(i))]).dataCAX, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataMAN = permute(handles.alldata.(['Data', num2str(indices(i))]).dataMAN, [2, 1]);
+
+
+                       if isfield(handles.alldata.(['Data', num2str(indices(i))]), 'DisplaydataNON')
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataNON = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataNON, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAX = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAX, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataTOVAL = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataTOVAL, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataCAX = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataCAX, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAN = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAN, [2, 1]);
+                       end
+                   catch
+                      disp('Error while changing the axis name! Please reload the data'); 
+                   end
+                   
+               elseif strcmp(handles.alldata.(['Data', num2str(indices(i))]).Plane, 'XZ') && newlinematx == 'X'
+                   handles.alldata.(['Data', num2str(indices(i))]).Plane = 'YZ';
+               elseif strcmp(handles.alldata.(['Data', num2str(indices(i))]).Plane, 'XZ') && newlinematx == 'Z'
+                   handles.alldata.(['Data', num2str(indices(i))]).Plane = 'XY';
+                   % Need to swap the data order
+                   try
+                       handles.alldata.(['Data', num2str(indices(i))]).dataNON = permute(handles.alldata.(['Data', num2str(indices(i))]).dataNON, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataMAX = permute(handles.alldata.(['Data', num2str(indices(i))]).dataMAX, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataTOVAL = permute(handles.alldata.(['Data', num2str(indices(i))]).dataTOVAL, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataCAX = permute(handles.alldata.(['Data', num2str(indices(i))]).dataCAX, [2, 1]);
+                       handles.alldata.(['Data', num2str(indices(i))]).dataMAN = permute(handles.alldata.(['Data', num2str(indices(i))]).dataMAN, [2, 1]);
+
+
+                       if isfield(handles.alldata.(['Data', num2str(indices(i))]), 'DisplaydataNON')
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataNON = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataNON, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAX = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAX, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataTOVAL = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataTOVAL, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataCAX = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataCAX, [2, 1]);
+                           handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAN = permute(handles.alldata.(['Data', num2str(indices(i))]).DisplaydataMAN, [2, 1]);
+                       end
+                   catch
+                      disp('Error while changing the axis name! Please reload the data'); 
+                   end
+               elseif strcmp(handles.alldata.(['Data', num2str(indices(i))]).Plane, 'YZ') && newlinematx == 'Y'
+                   handles.alldata.(['Data', num2str(indices(i))]).Plane = 'XZ';
+               elseif strcmp(handles.alldata.(['Data', num2str(indices(i))]).Plane, 'YZ') && newlinematx == 'Z'
+                   handles.alldata.(['Data', num2str(indices(i))]).Plane = 'XY';
+               end
+            end
+        end 
+    end   
+
+end
+
+guidata(hObject, handles);
+% Update the figure with only re-drawing chosen data
+handles.redraw = 1;
+try
+    listboxChooseData_Callback(handles.listboxChooseData, [], handles);
+catch
+   disp('Error in axis invertion. Figure not updated'); 
+end
+
+
 
 
 

@@ -272,7 +272,6 @@ else
     [gidxydel, gidxxdel] = find(gmask == 0);
     indexdel = sub2ind([size(gmask,1), size(gmask,2)], gidxydel, gidxxdel);
     
-    
     index2 = sub2ind([size(gmask,1), size(gmask,2)], gidxy, gidxx);
     Drelative = zeros(size(gmask,1),size(gmask,2));
     Drelative(index2) = (measured(index2) - reference(index2))./reference(index2);    %./(reference*dosecrit/100);
@@ -286,7 +285,8 @@ else
     
     Dabsolute = (measured - reference);
     Dabsolute(indexdel) = NaN;
-    [Dpasspercy, ~] = find(abs(Drelative)*100 < dosecrit);
+    [Dpasspercy, ~] = find(abs(Drelative)*100 < dosecrit*2);
+    
     % Number of passes
     Dpasssize = length(Dpasspercy);
     Dpassperc = Dpasssize/matsize*100;
