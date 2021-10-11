@@ -5,7 +5,7 @@ function varargout = Profeel(varargin)
 
 
 % This program is free software: you can redistribute it and/or modify it 
-% under the terms of the GNU General Public License as published by the  
+% under the terms of the GNU General Public License as published by the
 % Free Software Foundation, either version 3 of the License, or (at your 
 % option) any later version.
 %
@@ -40,7 +40,7 @@ function varargout = Profeel(varargin)
 
 % Edit the above text to modify the response to help Profeel
 
-% Last Modified by GUIDE v2.5 18-May-2021 18:50:15
+% Last Modified by GUIDE v2.5 24-Aug-2021 15:18:00
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -2580,7 +2580,7 @@ elseif strcmp(datatype, '3ddose') || strcmp(datatype, 'dcm')
         
         % Check dimensions
         if length(x) > 1 && length(y) > 1 && length(z) > 1
-            disp('3D')
+            disp('3D');
             % Add 3D data
             handles.alldata.(['Data',num2str(handles.datacount)]).data = dose_3d;
             try
@@ -2684,7 +2684,7 @@ elseif strcmp(datatype, '3ddose') || strcmp(datatype, 'dcm')
         
         % Truncate size for display, if data is too big (e.g. > 100/dim)
         if truncate == 1 && (strcmp(handles.alldata.(['Data',num2str(handles.datacount)]).datatype, "2D") || strcmp(handles.alldata.(['Data',num2str(handles.datacount)]).datatype,"3D"))
-            disp('Data truncated to speedup display');
+            disp('Data resolution lowered for visualization');
 
             Vdose = dose_3d(1:ystep:length(dose_3d(:,1,1)), 1:xstep:length(dose_3d(1,:,1)), 1:zstep:length(dose_3d(1,1,:)));
             try
@@ -5706,6 +5706,35 @@ catch
 end
 
 
+
+
+
+
+
+% --- Executes on button press in pushbutton31.
+function pushbutton31_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton31 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+indices = find(handles.idx);
+prompt = {''};
+dlgtitle = 'Separator: E.g. comma = , ; TAB = [TAB]';
+definput = ",";
+dims = [1 80];
+isep = inputdlg(prompt,dlgtitle,dims,definput);
+% VARARGIN
+% {filename, imagename, length unit, separator, unit, plane, planeposition ,rowsize,
+% colsize, energy, datatype, datafactor, number of bodies (mandatory but not relevant here -> set to  1), data, colpos, rowpos}
+for i = 1:length(indices)
+    fname = get(handles.editexport, 'String');
+    if strcmp(handles.alldata.(['Data', num2str(indices(i))]).datatype, '2D')
+        writeOmnifile(fname, handles.alldata.(['Data', num2str(indices(i))]).name, handles.alldata.(['Data', num2str(indices(i))]).ImageName, handles.alldata.(['Data', num2str(indices(i))]).LengthUnit,...
+            isep{1}, handles.alldata.(['Data', num2str(indices(i))]).DataUnit, handles.alldata.(['Data', num2str(indices(i))]).Plane, handles.alldata.(['Data', num2str(indices(i))]).PlanePosition,... 
+            size(handles.alldata.(['Data', num2str(indices(i))]).dataNON,1), size(handles.alldata.(['Data', num2str(indices(i))]).dataNON,2), handles.alldata.(['Data', num2str(indices(i))]).Energy,...
+            handles.alldata.(['Data', num2str(indices(i))]).datatype, handles.alldata.(['Data', num2str(indices(i))]).DataFactor, '1',handles.alldata.(['Data', num2str(indices(i))]).dataNON, ...
+            handles.alldata.(['Data', num2str(indices(i))]).xpos, handles.alldata.(['Data', num2str(indices(i))]).ypos)
+    end
+end
 
 
 

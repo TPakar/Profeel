@@ -56,7 +56,6 @@ for k = 1:length(omnidir)
               %omnidata.(['omni', num2str(filecount+2)]).name = [omnidata.(['omni', num2str(filecount+2)]).name,' ', im];
            end
            line = fgetl(fid);
-           
            % Separator
            if contains(line, 'Separator:')
                if contains(line, '[TAB]')
@@ -128,11 +127,11 @@ for k = 1:length(omnidir)
                xpos = str2double(temp2(2:end-1));
                
            elseif linecount >= collectdata && ~contains(line, '</asciibody>')
-               % Collect y positions
+               % Collect y position
                temp = strrep(line, ' ','');
+               
                temp2 = strsplit(temp, separator);
                ypos(ycount) = str2double(temp2(1,1));
-               
                % Collect matrix data
                datamatrix(ycount,:) = str2double(temp2(2:end-1));         
                ycount = ycount + 1;    
