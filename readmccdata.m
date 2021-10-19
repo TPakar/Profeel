@@ -71,6 +71,7 @@ for i = 1:length(files)
                           else
                               curvetype = line(splithere+1:end);
                           end
+                          disp(['Curvetype: ', curvetype]);
                   end
                   %catch
                   %   disp([linestart, ' not found from the header']); 
@@ -199,6 +200,13 @@ for i = 1:length(files)
                     idx2 = [];
                     if ~contains(mccdat.(['mcc', num2str(filecount)]).datatype,'pdd')
                         idx2 = find((datainterp(:,1) == 0));
+                        if isempty(idx2)
+                           % Profile and no 0-point --> use the average
+                           % between the 2 closest values, if the sign
+                           % changes. Otherwise use the closest value
+                           [value, idx2] = min(abs(datainterp(:,1)));
+                            disp(['No zero point found for CAX normalization! Using the closest point at ', num2str(value),' cm, with value of ', num2str(datainterp(idx2,2)), dataunit]);
+                        end
                         tempmat2 = tempmat(:,2)./datainterp(idx2,2);
                         mccdat.(['mcc',num2str(filecount)]).dataCAX = tempmat2;      
                     else
